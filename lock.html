@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>A Secret For You</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/page0.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400&family=Dancing+Script:wght@600&display=swap" rel="stylesheet"/>
+</head>
+<body class="page0-body">
+
+  <!-- Curtain transition overlay (covers screen, then opens like a heart-iris) -->
+  <div class="curtain" id="curtain">
+    <div class="curtain-half curtain-left"></div>
+    <div class="curtain-half curtain-right"></div>
+    <div class="curtain-heart">❤️</div>
+  </div>
+
+  <div class="lock-wrapper">
+    <div class="lock-card" id="lockCard">
+
+      <div class="lock-icon-zone">
+        <div class="lock-glow"></div>
+        <!-- CSS heart-lock icon -->
+        <div class="heart-lock" id="heartLock">
+          <div class="heart-lock-shackle"></div>
+          <div class="heart-lock-body">
+            <span class="heart-lock-emoji">🔒</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="lock-pre">a little secret, just for us</p>
+      <h1 class="lock-title">This Page Is Locked</h1>
+      <p class="lock-sub" id="lockSub">Only one number can open it... you already know it by heart.</p>
+
+      <!-- PIN input boxes -->
+      <div class="pin-row" id="pinRow">
+        <input type="tel" inputmode="numeric" maxlength="1" class="pin-box" id="pin0" autocomplete="off" />
+        <input type="tel" inputmode="numeric" maxlength="1" class="pin-box" id="pin1" autocomplete="off" />
+        <input type="tel" inputmode="numeric" maxlength="1" class="pin-box" id="pin2" autocomplete="off" />
+      </div>
+
+      <button class="unlock-btn" id="unlockBtn" onclick="checkPassword()">
+        <span>Unlock My Heart</span>
+      </button>
+
+      <!-- Feedback message -->
+      <p class="feedback-msg" id="feedbackMsg"></p>
+
+      <p class="lock-hint">hint: think of three little digits we both love</p>
+    </div>
+  </div>
+
+  <script src="js/script.js"></script>
+  <script>
+    const CORRECT_CODE = "143";
+    const pins = [document.getElementById('pin0'), document.getElementById('pin1'), document.getElementById('pin2')];
+    const feedback = document.getElementById('feedbackMsg');
+    const lockCard = document.getElementById('lockCard');
+    const heartLock = document.getElementById('heartLock');
+    const curtain = document.getElementById('curtain');
+    let isUnlocking = false;
+
+    // Auto-advance between pin boxes
+    pins.forEach((input, idx) => {
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/[^0-9]/g, '').slice(0, 1);
+        if (input.value && idx < pins.length - 1) {
+          pins[idx + 1].focus();
+        }
+        feedback.classList.remove('msg-show');
+        if (pins.every(p => p.value.length === 1)) {
+          checkPassword();
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !input.value && idx > 0) {
+          pins[idx - 1].focus();
+        }
+        if (e.key === 'Enter') checkPassword();
+      });
+    });
+
+    pins[0].focus();
+
+    function getEnteredCode() {
+      return pins.map(p => p.value).join('');
+    }
+
+    function clearPins() {
+      pins.forEach(p => p.value = '');
+      pins[0].focus();
+    }
+
+    function checkPassword() {
+      if (isUnlocking) return;
+      const code = getEnteredCode();
+      if (code.length < 3) {
+        pins.find(p => !p.value)?.focus();
+        return;
+      }
+
+      if (code === CORRECT_CODE) {
+        unlockSuccess();
+      } else {
+        unlockFail();
+      }
+    }
+
+    function unlockFail() {
+      feedback.textContent = "Valobasha kome geche😭";
+      feedback.classList.remove('msg-success');
+      feedback.classList.add('msg-fail', 'msg-show');
+      lockCard.classList.remove('shake');
+      requestAnimationFrame(() => lockCard.classList.add('shake'));
+      heartLock.classList.remove('lock-wiggle');
+      requestAnimationFrame(() => heartLock.classList.add('lock-wiggle'));
+
+      setTimeout(() => {
+        clearPins();
+        lockCard.classList.remove('shake');
+      }, 650);
+    }
+
+    function unlockSuccess() {
+      isUnlocking = true;
+      pins.forEach(p => p.disabled = true);
+      document.getElementById('unlockBtn').disabled = true;
+
+      feedback.textContent = "Omg! You have typed 143. It means amake eto valobasho🫪";
+      feedback.classList.remove('msg-fail');
+      feedback.classList.add('msg-success', 'msg-show');
+
+      heartLock.classList.add('lock-open');
+      lockCard.classList.add('card-success');
+
+      // Little heart burst from the lock
+      spawnHeartBurst();
+
+      // After she reads the message, transition to the main surprise
+      setTimeout(() => {
+        curtain.classList.add('curtain-active');
+      }, 2200);
+
+      setTimeout(() => {
+        sessionStorage.setItem('bhumikaUnlocked', 'true');
+        window.location.href = 'index.html';
+      }, 3500);
+    }
+
+    function spawnHeartBurst() {
+      const zone = document.querySelector('.lock-icon-zone');
+      const symbols = ['❤️', '💖'];
+      for (let i = 0; i < 14; i++) {
+        const span = document.createElement('span');
+        span.className = 'burst-heart';
+        span.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+        const angle = (Math.PI * 2 * i) / 14;
+        const distance = 60 + Math.random() * 50;
+        span.style.setProperty('--tx', Math.cos(angle) * distance + 'px');
+        span.style.setProperty('--ty', Math.sin(angle) * distance + 'px');
+        span.style.left = '50%';
+        span.style.top = '50%';
+        zone.appendChild(span);
+        setTimeout(() => span.remove(), 1200);
+      }
+    }
+  </script>
+</body>
+</html>

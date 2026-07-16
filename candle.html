@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Make a Wish</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/candle.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400&family=Dancing+Script:wght@600&display=swap" rel="stylesheet"/>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+</head>
+<body class="candle-body">
+
+  <!-- Nav -->
+  <nav class="top-nav">
+    <a href="gallery.html" class="nav-back">← Memories</a>
+    <span class="nav-title">Make a Wish</span>
+    <a href="letter.html" class="nav-next">Letter →</a>
+  </nav>
+
+  <div class="candle-wrapper">
+    <p class="candle-pre">close your eyes, make a wish</p>
+    <h2 class="candle-title">Blow Out the Candle</h2>
+    <p class="candle-sub" id="candleSub">Tap the flame, or blow into your mic — let's see if the magic works.</p>
+
+    <!-- Cake + Candle scene -->
+    <div class="cake-scene" id="cakeScene">
+      <div class="candle-stick" id="candleStick" onclick="blowCandle()" role="button" tabindex="0" aria-label="Blow out the candle">
+        <div class="flame-wrap" id="flameWrap">
+          <div class="flame"></div>
+          <div class="flame flame-inner"></div>
+        </div>
+        <div class="smoke-wrap" id="smokeWrap"></div>
+        <div class="wick"></div>
+        <div class="wax"></div>
+      </div>
+
+      <div class="cake-body">
+        <div class="cake-layer cake-top">
+          <div class="cake-drip d1"></div>
+          <div class="cake-drip d2"></div>
+          <div class="cake-drip d3"></div>
+        </div>
+        <div class="cake-layer cake-bottom"></div>
+        <div class="cake-plate"></div>
+      </div>
+    </div>
+
+    <button class="blow-btn" id="blowBtn" onclick="blowCandle()">
+      <span id="blowBtnText">Blow the Candle</span>
+    </button>
+    <p class="mic-hint" id="micHint">🎤 Mic blowing also works if you allow access — totally optional.</p>
+
+    <!-- After wish (hidden initially) -->
+    <div class="wish-reveal hidden" id="wishReveal">
+      <h3 class="wish-title">Wish Made <span class="wish-sparkle">✨</span></h3>
+      <p class="wish-text">Whatever you wished for, I hope it comes true.<br/>And if it didn't include me even a little... make another one.</p>
+      <a href="letter.html" class="cta-button">Continue →</a>
+    </div>
+  </div>
+
+  <!-- Music Player -->
+  <div class="music-player" id="musicPlayer">
+    <audio id="bgMusic" loop>
+      <source src="music/birthday-song.mp3" type="audio/mpeg"/>
+    </audio>
+    <button class="music-btn" id="musicToggle" onclick="toggleMusic()">🎵</button>
+    <span class="music-label">Music</span>
+  </div>
+
+  <script src="js/script.js"></script>
+  <script>
+    let candleBlown = false;
+
+    function blowCandle() {
+      if (candleBlown) return;
+      candleBlown = true;
+
+      const stick = document.getElementById('candleStick');
+      const cake = document.getElementById('cakeScene');
+      const sub = document.getElementById('candleSub');
+      const btn = document.getElementById('blowBtn');
+      const reveal = document.getElementById('wishReveal');
+
+      stick.classList.add('candle-out');
+      cake.classList.add('cake-celebrate');
+      sub.textContent = "There it goes...";
+      btn.disabled = true;
+      document.getElementById('blowBtnText').textContent = 'Candle Blown Out';
+
+      launchSmallConfetti();
+
+      setTimeout(() => {
+        reveal.classList.remove('hidden');
+        reveal.classList.add('fade-in');
+      }, 900);
+
+      stopMic();
+    }
+
+    function launchSmallConfetti() {
+      if (typeof confetti !== 'function') return;
+      const colors = ['#ffb6c1','#ffc0cb','#ff69b4','#dda0dd','#fff0f5','#ff85a1'];
+      confetti({ particleCount: 60, spread: 90, origin: { y: 0.55 }, colors });
+    }
+
+    /* ===== Optional: blow-into-mic detection (graceful no-op if denied/unsupported) ===== */
+    let micStream = null;
+    let micAudioCtx = null;
+
+    function stopMic() {
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+        micStream = null;
+      }
+      if (micAudioCtx) {
+        micAudioCtx.close().catch(() => {});
+        micAudioCtx = null;
+      }
+    }
+
+    async function initMicBlowDetection() {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = micAudioCtx.createMediaStreamSource(micStream);
+        const analyser = micAudioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+
+        function checkVolume() {
+          if (candleBlown || !micAudioCtx) return;
+          analyser.getByteFrequencyData(data);
+          const avg = data.reduce((a, b) => a + b, 0) / data.length;
+          if (avg > 55) {
+            blowCandle();
+            return;
+          }
+          requestAnimationFrame(checkVolume);
+        }
+        checkVolume();
+      } catch (err) {
+        // Mic denied or unavailable — the button still works perfectly.
+        console.log('Mic blow detection unavailable, using button only.');
+      }
+    }
+
+    // Try mic detection on load (silently falls back to button-only if blocked)
+    initMicBlowDetection();
+  </script>
+</body>
+</html>
